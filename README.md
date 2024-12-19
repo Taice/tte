@@ -13,3 +13,7 @@ no, probably not
 
 ## ty 
 no porblem
+
+## FYI
+- this uses vim binds. if you don't know them, your loss.
+- this is also missing many vim binds, if they aren't present don't be surprised
