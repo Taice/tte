@@ -56,7 +56,9 @@ impl App {
         while !app.exit {
             terminal.draw(|frame| {
                 app.draw(frame);
-                frame.set_cursor_position(app.get_cur_pos(frame.area().height));
+                frame.set_cursor_position(
+                    app.get_cur_pos(frame.area().height, frame.area().width - 2),
+                );
             })?;
             app.handle_input();
         }
@@ -64,10 +66,17 @@ impl App {
         Ok(())
     }
 
-    fn get_cur_pos(&mut self, height: u16) -> Position {
+    fn get_cur_pos(&mut self, height: u16, width: u16) -> Position {
         match self.mode {
             Mode::Command => Position::new(self.command.len() as u16, height - 1),
-            _ => Position::new(self.col as u16 + 1, self.row as u16 + 1),
+            _ => Position::new(
+                if self.col < width as usize {
+                    self.col as u16 + 1
+                } else {
+                    width
+                },
+                self.row as u16 + 1,
+            ),
         }
     }
 
@@ -283,7 +292,7 @@ impl App {
         }
     }
     fn move_right(&mut self) {
-        if self.col < self.contents[self.row].len() {
+        if self.col < self.contents[self.row].len().saturating_sub(1) {
             self.col += 1;
             self.target_col = self.col;
         }
@@ -344,8 +353,7 @@ impl Widget for &App {
 
         let paragraph = Paragraph::new(Text::from(
             self.contents[self.view.0..self.view.1].join("\n"),
-        ))
-        .wrap(Wrap::default());
+        ));
         let block = Block::bordered()
             .border_set(border::DOUBLE)
             .title_top(&*self.file_name)
