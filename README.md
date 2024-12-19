@@ -9,7 +9,7 @@ no, probably not
 ## How do I use it?
 - you clone git repo
 - you cargo build --release
-- you cargo run (filename) or ./target/release/tte (filename) 
+- you cargo run --release (filename) or ./target/release/tte (filename) 
 
 ## ty 
 no porblem
