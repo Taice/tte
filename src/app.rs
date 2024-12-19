@@ -5,7 +5,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Position},
     symbols::border,
     text::Text,
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, Paragraph, Widget, Wrap},
     DefaultTerminal, Frame,
 };
 use std::{fs, io};
@@ -56,9 +56,9 @@ impl App {
         while !app.exit {
             terminal.draw(|frame| {
                 app.draw(frame);
-                frame.set_cursor_position(app.get_cur_pos(frame.area().height))
+                frame.set_cursor_position(app.get_cur_pos(frame.area().height));
             })?;
-            app.handle_input()?;
+            app.handle_input();
         }
 
         Ok(())
@@ -71,15 +71,14 @@ impl App {
         }
     }
 
-    fn handle_input(&mut self) -> io::Result<()> {
-        if let event::Event::Key(key) = event::read()? {
+    fn handle_input(&mut self) {
+        if let Ok(event::Event::Key(key)) = event::read() {
             match self.mode {
                 Mode::Insert => self.handle_keycode_insert(key.code),
                 Mode::Normal => self.handle_keycode_normal(key.code),
                 Mode::Command => self.handle_keycode_command(key.code),
             }
         }
-        Ok(())
     }
 
     fn handle_command(&mut self) {
@@ -113,12 +112,12 @@ impl App {
                     self.row -= 1;
                     self.col = from_right + 1;
                 } else {
-                    if self.col > self.contents[self.row].len().saturating_sub(1) {
+                    if self.col >= self.contents[self.row].len().saturating_sub(1) {
                         self.contents[self.row].pop();
                     } else {
                         self.contents[self.row].remove(self.col.saturating_sub(1));
                     }
-                    self.col -= 1;
+                    self.col = self.col.saturating_sub(1);
                 }
             }
             KeyCode::Esc => {
@@ -178,7 +177,9 @@ impl App {
             }
             'a' => {
                 self.mode = Mode::Insert;
-                self.col += 1;
+                if !self.contents[self.row].is_empty() {
+                    self.col += 1;
+                }
             }
             'A' => {
                 self.mode = Mode::Insert;
@@ -204,7 +205,12 @@ impl App {
                 self.target_col = 0;
             }
             'x' => {
-                if !self.contents[self.row].is_empty() {
+                if self.contents[self.row].is_empty() {
+                    return;
+                }
+                if self.col >= self.contents[self.row].len().saturating_sub(1) {
+                    self.contents[self.row].pop();
+                } else {
                     self.contents[self.row].remove(self.col);
                     if self.col > self.contents[self.row].len().saturating_sub(1) {
                         self.col -= 1;
@@ -312,9 +318,9 @@ impl Widget for &App {
         let ver = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(0),      // Space above the widget
-                Constraint::Percentage(97), // Height of the widget (centered area)
-                Constraint::Percentage(3),  // Space below the widget
+                Constraint::Max(0),          // Space above the widget
+                Constraint::Percentage(100), // Height of the widget (centered area)
+                Constraint::Length(1),       // Space below the widget
             ])
             .split(area);
 
@@ -338,7 +344,8 @@ impl Widget for &App {
 
         let paragraph = Paragraph::new(Text::from(
             self.contents[self.view.0..self.view.1].join("\n"),
-        ));
+        ))
+        .wrap(Wrap::default());
         let block = Block::bordered()
             .border_set(border::DOUBLE)
             .title_top(&*self.file_name)
