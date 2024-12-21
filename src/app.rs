@@ -5,7 +5,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Position},
     symbols::border,
     text::Text,
-    widgets::{Block, Paragraph, Widget, Wrap},
+    widgets::{Block, Paragraph, Widget},
     DefaultTerminal, Frame,
 };
 use std::{fs, io};
@@ -156,7 +156,12 @@ impl App {
         }
     }
     fn handle_ch_insert(&mut self, ch: char) {
-        self.contents[self.row].insert(self.col, ch);
+        if self.contents.is_empty() {
+            self.contents.push(String::from(ch));
+            self.view.1 += 1;
+        } else {
+            self.contents[self.row].insert(self.col, ch);
+        }
         self.col += 1;
     }
 
@@ -225,6 +230,19 @@ impl App {
                         self.col -= 1;
                     }
                 }
+            }
+            'X' => {
+                if self.contents.is_empty() {
+                    return;
+                }
+
+                if self.row == self.contents.len().saturating_sub(1) {
+                    self.contents.pop();
+                    self.move_up();
+                } else {
+                    self.contents.remove(self.row);
+                }
+                self.view.1 = self.view.1.saturating_sub(1);
             }
             'o' => {
                 if self.row == self.contents.len().saturating_sub(1) {
@@ -309,6 +327,11 @@ impl App {
         }
     }
     fn move_up(&mut self) {
+        if self.contents.is_empty() {
+            self.col = 0;
+            self.row = 0;
+            return;
+        }
         self.row = self.row.saturating_sub(1);
         let len = self.contents[self.row].len().saturating_sub(1);
         if self.target_col > len {
